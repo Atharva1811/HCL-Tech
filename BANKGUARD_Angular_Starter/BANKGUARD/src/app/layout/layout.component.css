@@ -1,0 +1,111 @@
+/* ── Layout Shell ────────────────────────────────────────────── */
+
+:host {
+  display: block;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ── Main Area ──────────────────────────────────────────────── */
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
+  overflow-x: hidden;
+}
+
+.layout.sidebar-collapsed .main-area {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+/* ── Content Area ───────────────────────────────────────────── */
+
+.content-area {
+  flex: 1;
+  padding: 24px;
+  margin-top: var(--topbar-height);
+  overflow-y: auto;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-brand {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+}
+
+.footer-divider {
+  color: var(--border-secondary);
+}
+
+/* ── Mobile Overlay ─────────────────────────────────────────── */
+
+.mobile-overlay {
+  display: none;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 992px) {
+  .main-area {
+    margin-left: 0 !important;
+  }
+
+  .mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    backdrop-filter: blur(2px);
+  }
+
+  .layout.sidebar-collapsed .mobile-overlay {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-area {
+    padding: 16px;
+  }
+
+  .app-footer {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    padding: 12px 16px;
+  }
+}

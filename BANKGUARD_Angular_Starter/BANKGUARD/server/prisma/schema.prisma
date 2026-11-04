@@ -1,0 +1,161 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  BANKING_ADMINISTRATOR
+  FRAUD_INVESTIGATOR
+  READ_ONLY_AUDITOR
+}
+
+enum TransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  UNDER_REVIEW
+  BLOCKED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AccountStatus {
+  ACTIVE
+  UNDER_REVIEW
+  RESTRICTED
+  SUSPENDED
+}
+
+enum AlertStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  email        String        @unique
+  fullName     String
+  role         Role          @default(FRAUD_INVESTIGATOR)
+  passwordHash String
+  isActive     Boolean       @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Customer {
+  id                 String        @id @default(cuid())
+  customerId         String        @unique // e.g. CUS-1001
+  fullName           String
+  email              String        @unique
+  phone              String
+  address            String
+  panNumber          String        @unique
+  registrationDate   DateTime      @default(now())
+  status             AccountStatus @default(ACTIVE)
+  riskClassification RiskLevel     @default(LOW)
+  accounts           BankAccount[]
+  transactions       Transaction[]
+}
+
+model BankAccount {
+  id            String        @id @default(cuid())
+  accountNumber String        @unique
+  accountType   String        @default("Savings")
+  balance       Float         @default(0.0)
+  status        AccountStatus @default(ACTIVE)
+  branch        String
+  ifscCode      String
+  openedDate    DateTime      @default(now())
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  transactionId   String            @unique // e.g. TXN-90821
+  customerId      String
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  senderAccount   String
+  receiverAccount String
+  type            String            // Transfer, Card Payment, Withdrawal, Deposit
+  amount          Float
+  paymentMethod   String            // UPI, NEFT, RTGS, IMPS, Card, Cash
+  location        String
+  status          TransactionStatus @default(COMPLETED)
+  riskScore       Int               @default(0)
+  riskLevel       RiskLevel         @default(LOW)
+  triggeredRules  String[]
+  description     String
+  createdAt       DateTime          @default(now())
+  alerts          FraudAlert[]
+}
+
+model FraudAlert {
+  id                     String      @id @default(cuid())
+  alertId                String      @unique // e.g. ALT-3018
+  transactionId          String
+  transaction            Transaction @relation(fields: [transactionId], references: [id])
+  amount                 Float
+  riskScore              Int
+  riskLevel              RiskLevel
+  category               String
+  triggeredRules         String[]
+  explanation            String
+  detectedAt             DateTime    @default(now())
+  status                 AlertStatus @default(OPEN)
+  assignedTo             String?
+  dismissalJustification String?
+  resolvedAt             DateTime?
+  notes                  InvestigationNote[]
+}
+
+model InvestigationNote {
+  id        String     @id @default(cuid())
+  alertId   String
+  alert     FraudAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  author    String
+  content   String
+  action    String
+  createdAt DateTime   @default(now())
+}
+
+model DetectionRule {
+  id                String   @id @default(cuid())
+  ruleId            String   @unique // RULE-01
+  name              String
+  description       String
+  enabled           Boolean  @default(true)
+  scoreWeight       Int      @default(20)
+  threshold         Float    @default(100000.0)
+  timeWindowMinutes Int      @default(0)
+  updatedAt         DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  userName  String
+  action    String
+  target    String
+  targetId  String
+  details   String
+  ipAddress String
+  timestamp DateTime @default(now())
+}
+
