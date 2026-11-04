@@ -18,6 +18,9 @@
 
 ## 1. Executive Summary
 
+- ?? **Live Demo URL**: [https://atharva1811.github.io/HCL-Tech/](https://atharva1811.github.io/HCL-Tech/)
+- ?? **GitHub Repository**: [https://github.com/Atharva1811/HCL-Tech](https://github.com/Atharva1811/HCL-Tech)
+
 **BANKGUARD** is an enterprise-grade banking operations and explainable fraud detection web application built with Angular 21, TypeScript, Chart.js, and Node.js. It bridges core retail banking operations (account management, customer KYC, transaction processing) with an automated rule-based fraud detection engine that evaluates every financial transaction in real-time.
 
 Unlike opaque black-box machine learning systems, BANKGUARD provides **explainable fraud detection**: every flagged incident explicitly details *which specific detection rules triggered the alert, the calculated risk score (0–100), and a plain-language justification* for compliance auditors.
