@@ -1,0 +1,56 @@
+name: Deploy BANKGUARD to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: BANKGUARD_Angular_Starter/BANKGUARD/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: BANKGUARD_Angular_Starter/BANKGUARD
+        run: npm ci
+
+      - name: Build Angular Application for GitHub Pages
+        working-directory: BANKGUARD_Angular_Starter/BANKGUARD
+        run: npm run build -- --base-href /HCL-Tech/
+
+      - name: Copy 404.html for Single-Page Application (SPA) Routing
+        working-directory: BANKGUARD_Angular_Starter/BANKGUARD/dist/bankguard/browser
+        run: cp index.html 404.html
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: BANKGUARD_Angular_Starter/BANKGUARD/dist/bankguard/browser
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
