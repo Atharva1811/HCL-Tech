@@ -91,16 +91,45 @@ $$\text{Final Score} = \min\left(100, \sum_{i=1}^{n} \text{Weight}_i \times \mat
 The Node.js Express server is located in `/server` and exposes:
 - `POST /api/auth/login` — Administrative authentication
 - `GET /api/health` — Health check status
-- `GET /api/rules` — Fetch active fraud detection rules
-- `PUT /api/rules/:id` — Update thresholds and score weights
+- `GET /api/dashboard/stats` — Real-time aggregate KPIs
+- `GET /api/transactions` — Paginated, searchable transaction ledger
+- `PATCH /api/transactions/:id/status` — Transaction status transition with audit log
+- `GET /api/fraud/alerts` — Incident queue with severity tiers
+- `PATCH /api/fraud/alerts/:id/status` — Alert workflow management
+- `POST /api/fraud/alerts/:id/notes` — Add investigator notes
 - `POST /api/fraud/evaluate` — Stateless transaction risk scoring engine
+- `GET /api/customers` & `GET /api/accounts` — KYC & banking ledgers
+- `GET /api/rules` & `PUT /api/rules/:id` — Fraud rule calibration
+- `GET /api/audit-logs` — Immutable administrative event log
 
 The PostgreSQL database is defined in `/server/prisma/schema.prisma` covering:
 - `User`, `Customer`, `BankAccount`, `Transaction`, `FraudAlert`, `InvestigationNote`, `DetectionRule`, and `AuditLog`.
 
 ---
 
-## 6. How to Run Locally
+## 6. Hosting Backend on Render
+
+The repository includes native Render Blueprint support (`render.yaml`) and Dockerfile configuration.
+
+### Deploying to Render:
+1. Log in to [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** -> **Blueprint**.
+3. Connect your GitHub repository: `https://github.com/Atharva1811/HCL-Tech`.
+4. Render will automatically detect `render.yaml` and configure the service:
+   - **Service Name**: `bankguard-backend`
+   - **Environment**: Node
+   - **Root Directory**: `BANKGUARD_Angular_Starter/BANKGUARD/server`
+   - **Build Command**: `npm install`
+   - **Start Command**: `node server.js`
+   - **Port**: `10000`
+   - **Health Check Path**: `/api/health`
+5. Click **Apply**. Render will build and deploy your backend with a free live HTTPS URL (e.g., `https://bankguard-backend.onrender.com`).
+
+Alternatively, you can click **New +** -> **Web Service**, select repository `Atharva1811/HCL-Tech`, and enter the above settings manually.
+
+---
+
+## 7. How to Run Locally
 
 ### Requirements:
 - Node.js 18+ or 20+
@@ -129,6 +158,6 @@ node tests/fraud-engine.test.js
 
 ---
 
-## 7. Important Demonstration Disclaimer
+## 8. Important Demonstration Disclaimer
 
 All customer identities, account numbers, transactions, risk metrics, and detection thresholds in this application are **synthetic demonstration data** generated for college main project evaluation. No connection to real banking APIs or live payment gateways is established.
