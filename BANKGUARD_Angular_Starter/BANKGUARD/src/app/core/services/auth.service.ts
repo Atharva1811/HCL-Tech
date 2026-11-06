@@ -61,8 +61,8 @@ export class AuthService {
     }
 
     const redirectUrl = getDefaultDashboardRoute(user.role);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Login successful.',
       role: user.role,
       redirectUrl

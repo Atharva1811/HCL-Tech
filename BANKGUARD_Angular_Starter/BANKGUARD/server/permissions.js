@@ -81,3 +81,4 @@ module.exports = {
   ROLE_PERMISSIONS,
   hasPermission
 };
+

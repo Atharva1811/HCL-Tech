@@ -182,3 +182,4 @@ export function getDefaultDashboardRoute(role: UserRole | null | undefined): str
       return '/dashboard/admin';
   }
 }
+
