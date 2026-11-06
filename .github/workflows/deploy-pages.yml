@@ -6,9 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: "pages"
@@ -16,9 +14,6 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -31,27 +26,34 @@ jobs:
           cache: 'npm'
           cache-dependency-path: BANKGUARD_Angular_Starter/BANKGUARD/package-lock.json
 
-      - name: Install Dependencies
+      - name: Install Frontend Dependencies
         working-directory: BANKGUARD_Angular_Starter/BANKGUARD
         run: npm ci
+
+      - name: Install Backend Test Dependencies
+        working-directory: BANKGUARD_Angular_Starter/BANKGUARD/server
+        run: npm ci
+
+      - name: Run Automated Verification Tests
+        working-directory: BANKGUARD_Angular_Starter/BANKGUARD
+        run: |
+          node tests/rbac.test.js
+          node tests/fraud-engine.test.js
 
       - name: Build Angular Application for GitHub Pages
         working-directory: BANKGUARD_Angular_Starter/BANKGUARD
         run: npm run build -- --base-href /HCL-Tech/
 
-      - name: Copy 404.html for Single-Page Application (SPA) Routing
+      - name: Prepare SPA Routing and Static Files
         working-directory: BANKGUARD_Angular_Starter/BANKGUARD/dist/bankguard/browser
-        run: cp index.html 404.html
+        run: |
+          cp index.html 404.html
+          touch .nojekyll
 
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to GitHub Pages Branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: BANKGUARD_Angular_Starter/BANKGUARD/dist/bankguard/browser
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: BANKGUARD_Angular_Starter/BANKGUARD/dist/bankguard/browser
+          publish_branch: gh-pages
+          force_orphan: true
