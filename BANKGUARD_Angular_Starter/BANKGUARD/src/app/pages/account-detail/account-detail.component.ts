@@ -162,6 +162,7 @@ import { BankAccount, BankTransaction, AccountStatus } from '../../core/models';
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .cards-grid {
@@ -184,6 +185,7 @@ import { BankAccount, BankTransaction, AccountStatus } from '../../core/models';
       color: #344054;
       font-weight: 600;
       margin: 0;
+      word-break: break-word;
     }
     .big-amount {
       font-size: 18px !important;
@@ -206,6 +208,28 @@ import { BankAccount, BankTransaction, AccountStatus } from '../../core/models';
     .empty-box {
       text-align: center;
       padding: 60px 20px;
+    }
+
+    @media (max-width: 800px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .data-grid {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .data-grid dt {
+        margin-top: 6px;
+      }
+      .action-buttons {
+        width: 100%;
+      }
+      .action-buttons button {
+        width: 100%;
+      }
     }
   `]
 })

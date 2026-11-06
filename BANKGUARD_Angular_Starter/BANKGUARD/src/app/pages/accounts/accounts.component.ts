@@ -194,10 +194,16 @@ import { BankAccount, AccountStatus, AccountType } from '../../core/models';
 
     @media (max-width: 800px) {
       .aggregate-strip {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .filter-row {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .aggregate-strip {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   `]

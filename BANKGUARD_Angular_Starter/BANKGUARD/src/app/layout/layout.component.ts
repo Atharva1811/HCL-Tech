@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, HostListener } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from './sidebar.component';
@@ -10,9 +10,15 @@ import { TopbarComponent } from './topbar.component';
   imports: [CommonModule, RouterOutlet, SidebarComponent, TopbarComponent],
   template: `
     <div class="app-shell">
+      @if (mobileSidebarOpen()) {
+        <div class="mobile-backdrop" (click)="closeMobileSidebar()" aria-hidden="true"></div>
+      }
+
       <bg-sidebar 
-        [collapsed]="sidebarCollapsed()" 
-        (toggle)="toggleSidebar()">
+        [collapsed]="sidebarCollapsed()"
+        [mobileOpen]="mobileSidebarOpen()"
+        (toggle)="toggleSidebar()"
+        (closeMobile)="closeMobileSidebar()">
       </bg-sidebar>
 
       <main class="main-content" [class.expanded]="sidebarCollapsed()">
@@ -33,6 +39,8 @@ import { TopbarComponent } from './topbar.component';
     :host {
       display: block;
       min-height: 100vh;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     .app-shell {
@@ -40,15 +48,34 @@ import { TopbarComponent } from './topbar.component';
       display: flex;
       background: #f5f7fb;
       color: #1d2939;
+      position: relative;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    .mobile-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
+      z-index: 90;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .main-content {
       margin-left: 248px;
       width: calc(100% - 248px);
+      min-width: 0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       transition: margin-left 0.2s ease, width 0.2s ease;
+      max-width: 100%;
     }
     .main-content.expanded {
       margin-left: 68px;
@@ -56,21 +83,26 @@ import { TopbarComponent } from './topbar.component';
     }
 
     .page-container {
-      padding: 34px 38px 25px;
+      padding: 28px 32px 24px;
       flex: 1;
       max-width: 1600px;
       width: 100%;
       margin: 0 auto;
+      box-sizing: border-box;
+      min-width: 0;
     }
 
     .footer {
       border-top: 1px solid #e9edf3;
-      padding: 15px 38px;
+      padding: 15px 32px;
       display: flex;
       justify-content: space-between;
       color: #a1aab8;
       font-size: 9px;
       background: #fff;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex-shrink: 0;
     }
     .online-dot {
       width: 7px;
@@ -87,17 +119,18 @@ import { TopbarComponent } from './topbar.component';
         width: calc(100% - 210px);
       }
       .page-container {
-        padding: 28px 24px;
+        padding: 24px 20px 20px;
       }
     }
 
-    @media (max-width: 760px) {
-      .main-content {
-        margin-left: 68px;
-        width: calc(100% - 68px);
+    /* Tablet & Mobile Breakpoint: Sidebar becomes an off-canvas drawer */
+    @media (max-width: 860px) {
+      .main-content, .main-content.expanded {
+        margin-left: 0 !important;
+        width: 100% !important;
       }
       .page-container {
-        padding: 20px 14px;
+        padding: 16px 14px 18px;
       }
       .footer {
         padding: 12px 14px;
@@ -105,12 +138,39 @@ import { TopbarComponent } from './topbar.component';
         gap: 6px;
       }
     }
+
+    /* Small Mobile Breakpoint (320px - 425px) */
+    @media (max-width: 425px) {
+      .page-container {
+        padding: 12px 10px 14px;
+      }
+      .footer {
+        padding: 10px 10px;
+        font-size: 8.5px;
+      }
+    }
   `]
 })
 export class LayoutComponent {
   sidebarCollapsed = signal<boolean>(false);
+  mobileSidebarOpen = signal<boolean>(false);
+
+  @HostListener('window:resize')
+  onResize(): void {
+    if (typeof window !== 'undefined' && window.innerWidth > 860) {
+      this.mobileSidebarOpen.set(false);
+    }
+  }
 
   toggleSidebar(): void {
-    this.sidebarCollapsed.update(v => !v);
+    if (typeof window !== 'undefined' && window.innerWidth <= 860) {
+      this.mobileSidebarOpen.update(v => !v);
+    } else {
+      this.sidebarCollapsed.update(v => !v);
+    }
+  }
+
+  closeMobileSidebar(): void {
+    this.mobileSidebarOpen.set(false);
   }
 }

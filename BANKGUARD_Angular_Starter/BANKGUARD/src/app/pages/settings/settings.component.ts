@@ -274,6 +274,21 @@ import { DetectionRule } from '../../core/models';
         grid-template-columns: 1fr;
       }
     }
+
+    @media (max-width: 480px) {
+      .meta-list {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .meta-list dt {
+        margin-top: 6px;
+      }
+      .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
   `]
 })
 export class SettingsComponent {

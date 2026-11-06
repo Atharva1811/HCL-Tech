@@ -211,6 +211,8 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       display: flex;
       flex-direction: column;
       gap: 18px;
+      max-width: 100%;
+      min-width: 0;
     }
     .back-link {
       background: none;
@@ -226,16 +228,19 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
     .heading-actions {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
+      width: 100%;
     }
 
     .data-list {
@@ -244,6 +249,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       gap: 10px;
       margin: 0;
       font-size: 11px;
+      word-break: break-word;
     }
     .data-list dt {
       color: #98a2b3;
@@ -252,6 +258,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       color: #344054;
       font-weight: 600;
       margin: 0;
+      word-break: break-word;
     }
     .big-amount {
       font-size: 18px !important;
@@ -263,6 +270,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       padding: 2px 8px;
       border-radius: 4px;
       font-size: 10px;
+      display: inline-block;
     }
     .link {
       color: #315fcb;
@@ -278,6 +286,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       background: #fafbfd;
       border-radius: 8px;
       border: 1px solid #f0f2f5;
+      flex-wrap: wrap;
     }
     .gauge-score {
       width: 54px;
@@ -290,6 +299,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       font-weight: 800;
       font-size: 18px;
       border: 3px solid;
+      flex-shrink: 0;
     }
     .gauge-score.low { border-color: #168a5c; color: #168a5c; background: #e9f8f0; }
     .gauge-score.medium { border-color: #d4a63e; color: #b78a26; background: #fff8e8; }
@@ -339,6 +349,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       border-radius: 5px;
       font-size: 10px;
       font-weight: 600;
+      overflow-wrap: anywhere;
     }
     .clean-rule {
       color: #168a5c;
@@ -384,6 +395,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       position: relative;
       z-index: 1;
       margin-left: -21px;
+      flex-shrink: 0;
     }
     .timeline-step.done .step-dot {
       border-color: #315fcb;
@@ -395,6 +407,10 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       background: #df5a55;
       color: #fff;
     }
+    .step-content {
+      min-width: 0;
+      flex: 1;
+    }
     .step-content b {
       display: block;
       font-size: 12px;
@@ -404,6 +420,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       font-size: 11px;
       color: #687589;
       margin: 2px 0 3px;
+      overflow-wrap: break-word;
     }
     .step-content small {
       font-size: 9px;
@@ -421,13 +438,16 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       border: 1px solid #ffe8e8;
       border-radius: 8px;
       padding: 14px 18px;
+      flex-wrap: wrap;
     }
     .alert-icon {
       font-size: 20px;
       color: #df5a55;
+      flex-shrink: 0;
     }
     .alert-body {
       flex: 1;
+      min-width: 0;
     }
     .alert-body b {
       display: block;
@@ -438,6 +458,7 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       font-size: 11px;
       color: #687589;
       margin: 2px 0 3px;
+      overflow-wrap: break-word;
     }
     .alert-body small {
       font-size: 9px;
@@ -464,6 +485,29 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
     @media (max-width: 992px) {
       .cards-grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .data-list {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .data-list dt {
+        margin-top: 6px;
+      }
+      .heading-actions {
+        width: 100%;
+      }
+      .heading-actions button {
+        width: 100%;
+      }
+      .alert-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .alert-item button {
+        width: 100%;
       }
     }
   `]

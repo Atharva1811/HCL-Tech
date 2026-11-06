@@ -248,18 +248,22 @@ Chart.register(...registerables);
       display: flex;
       flex-direction: column;
       gap: 20px;
+      max-width: 100%;
+      min-width: 0;
     }
 
     .heading-actions {
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .metric-grid {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 14px;
+      width: 100%;
     }
 
     .metric-card {
@@ -271,6 +275,7 @@ Chart.register(...registerables);
       position: relative;
       overflow: hidden;
       min-height: 128px;
+      min-width: 0;
     }
 
     .metric-top {
@@ -292,6 +297,7 @@ Chart.register(...registerables);
       place-items: center;
       font-size: 13px;
       font-weight: 700;
+      flex-shrink: 0;
     }
     .metric-icon.blue { background: #edf3ff; color: #4779e8; }
     .metric-icon.green { background: #e9f8f0; color: #1b9a67; }
@@ -305,6 +311,7 @@ Chart.register(...registerables);
       color: #172b4d;
       margin-top: 10px;
       letter-spacing: -0.6px;
+      word-break: break-word;
     }
 
     .metric-foot {
@@ -314,6 +321,7 @@ Chart.register(...registerables);
       color: #a1aab8;
       font-size: 9px;
       margin-top: 5px;
+      flex-wrap: wrap;
     }
 
     .trend { font-weight: 700; }
@@ -327,6 +335,7 @@ Chart.register(...registerables);
       font-size: 16px;
       letter-spacing: 0;
       opacity: 0.75;
+      pointer-events: none;
     }
     .blue-line { color: #4779e8; }
     .green-line { color: #28a675; }
@@ -338,12 +347,15 @@ Chart.register(...registerables);
     .charts-row {
       display: flex;
       gap: 16px;
+      width: 100%;
+      min-width: 0;
     }
-    .flex-1 { flex: 1; }
-    .flex-2 { flex: 2; }
+    .flex-1 { flex: 1; min-width: 0; }
+    .flex-2 { flex: 2; min-width: 0; }
 
     .chart-panel {
       padding: 18px;
+      min-width: 0;
     }
     .chart-badge {
       font-size: 10px;
@@ -352,11 +364,13 @@ Chart.register(...registerables);
       color: #315fcb;
       padding: 3px 8px;
       border-radius: 4px;
+      white-space: nowrap;
     }
     .canvas-wrap {
       position: relative;
       height: 220px;
       width: 100%;
+      max-width: 100%;
       margin-top: 10px;
     }
     .donut-wrap {
@@ -367,6 +381,8 @@ Chart.register(...registerables);
       display: grid;
       grid-template-columns: 1.65fr 1fr;
       gap: 16px;
+      width: 100%;
+      min-width: 0;
     }
 
     .clickable-row {
@@ -419,6 +435,9 @@ Chart.register(...registerables);
       display: block;
       font-size: 11px;
       color: #344054;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .alert-copy small {
       display: block;
@@ -442,16 +461,30 @@ Chart.register(...registerables);
 
     @media (max-width: 1300px) {
       .metric-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
     @media (max-width: 900px) {
       .metric-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .charts-row, .content-grid {
         flex-direction: column;
         grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 540px) {
+      .metric-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .heading-actions {
+        width: 100%;
+      }
+      .heading-actions button {
+        width: 100%;
+      }
+      .sparkline {
+        display: none;
       }
     }
   `]

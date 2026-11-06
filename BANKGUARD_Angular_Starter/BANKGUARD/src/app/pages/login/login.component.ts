@@ -225,6 +225,15 @@ import { AuthService } from '../../core/services/auth.service';
       font-size: 10px;
       color: #a1aab8;
     }
+
+    @media (max-width: 380px) {
+      .login-card {
+        padding: 24px 16px;
+      }
+      .role-chips {
+        grid-template-columns: 1fr;
+      }
+    }
   `]
 })
 export class LoginComponent {

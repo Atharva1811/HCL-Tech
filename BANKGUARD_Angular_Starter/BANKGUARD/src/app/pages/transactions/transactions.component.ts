@@ -176,25 +176,31 @@ import { BankTransaction, TransactionStatus, RiskLevel } from '../../core/models
       display: flex;
       flex-direction: column;
       gap: 16px;
+      max-width: 100%;
+      min-width: 0;
     }
     .header-actions {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .filter-panel {
       padding: 16px 20px;
+      min-width: 0;
     }
     .toolbar-grid {
       display: grid;
-      grid-template-columns: 2fr repeat(4, 1fr);
+      grid-template-columns: 2fr repeat(4, minmax(0, 1fr));
       gap: 12px;
       align-items: center;
+      width: 100%;
     }
     .search-box {
       position: relative;
       display: flex;
       align-items: center;
+      min-width: 0;
     }
     .search-icon {
       position: absolute;
@@ -219,6 +225,7 @@ import { BankTransaction, TransactionStatus, RiskLevel } from '../../core/models
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
     }
     .filter-group label {
       font-size: 9px;
@@ -228,6 +235,7 @@ import { BankTransaction, TransactionStatus, RiskLevel } from '../../core/models
       letter-spacing: 0.5px;
     }
     .filter-group select {
+      width: 100%;
       border: 1px solid #e8ecf2;
       border-radius: 7px;
       padding: 8px 10px;
@@ -294,6 +302,8 @@ import { BankTransaction, TransactionStatus, RiskLevel } from '../../core/models
       margin-top: 16px;
       padding-top: 12px;
       border-top: 1px solid #f1f3f6;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .page-meta {
       font-size: 11px;
@@ -311,6 +321,7 @@ import { BankTransaction, TransactionStatus, RiskLevel } from '../../core/models
     .page-controls {
       display: flex;
       gap: 4px;
+      flex-wrap: wrap;
     }
     .page-btn {
       border: 1px solid #e8ecf2;
@@ -338,6 +349,22 @@ import { BankTransaction, TransactionStatus, RiskLevel } from '../../core/models
       }
       .search-box {
         grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .toolbar-grid {
+        grid-template-columns: 1fr;
+      }
+      .header-actions {
+        width: 100%;
+      }
+      .header-actions button {
+        flex: 1 1 auto;
+      }
+      .pagination-footer {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   `]

@@ -226,10 +226,12 @@ import { Customer, BankAccount, BankTransaction, FraudAlert, CustomerStatus, Ris
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
     .action-buttons {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .profile-details-grid {
@@ -246,6 +248,7 @@ import { Customer, BankAccount, BankTransaction, FraudAlert, CustomerStatus, Ris
       color: #172b4d;
       font-weight: 600;
       margin: 0;
+      word-break: break-word;
     }
 
     .edit-grid {
@@ -280,6 +283,28 @@ import { Customer, BankAccount, BankTransaction, FraudAlert, CustomerStatus, Ris
     .empty-box {
       text-align: center;
       padding: 60px 20px;
+    }
+
+    @media (max-width: 600px) {
+      .edit-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .profile-details-grid {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .profile-details-grid dt {
+        margin-top: 6px;
+      }
+      .action-buttons {
+        width: 100%;
+      }
+      .action-buttons button {
+        width: 100%;
+      }
     }
   `]
 })

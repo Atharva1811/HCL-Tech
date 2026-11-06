@@ -178,7 +178,13 @@ import { AppUser, UserRole } from '../../core/models';
 
     @media (max-width: 900px) {
       .roles-banner {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .roles-banner {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   `]

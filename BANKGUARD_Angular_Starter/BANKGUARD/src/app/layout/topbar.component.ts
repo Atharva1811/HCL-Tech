@@ -13,12 +13,14 @@ import { NotificationService } from '../core/services/notification.service';
     <header class="topbar">
       <div class="breadcrumb">
         <button class="toggle-btn" (click)="toggleSidebar.emit()" title="Toggle Sidebar">☰</button>
-        Workspace <span>/</span> <b>{{ pageTitle() }}</b>
+        <span class="bc-root">Workspace</span> 
+        <span class="bc-sep">/</span> 
+        <b class="bc-title">{{ pageTitle() }}</b>
       </div>
 
       <div class="top-actions">
         <span class="live-indicator">
-          <i></i> Demo environment
+          <i></i> Live
         </span>
 
         <!-- Notifications -->
@@ -40,7 +42,7 @@ import { NotificationService } from '../core/services/notification.service';
                 @for (item of notifications(); track item.id) {
                   <div class="notif-row" [class.unread]="!item.read" (click)="goTo(item.link)">
                     <span class="notif-dot" [class]="item.type"></span>
-                    <div>
+                    <div class="notif-body">
                       <b>{{ item.title }}</b>
                       <p>{{ item.message }}</p>
                       <small>{{ item.timestamp | date:'hh:mm a' }}</small>
@@ -79,16 +81,18 @@ import { NotificationService } from '../core/services/notification.service';
   `,
   styles: [`
     .topbar {
-      height: 70px;
+      height: 66px;
       background: #fff;
       border-bottom: 1px solid #e9edf3;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 38px;
+      padding: 0 32px;
       position: sticky;
       top: 0;
       z-index: 50;
+      box-sizing: border-box;
+      max-width: 100%;
     }
 
     .breadcrumb {
@@ -96,41 +100,59 @@ import { NotificationService } from '../core/services/notification.service';
       color: #98a2b3;
       display: flex;
       align-items: center;
+      min-width: 0;
+      overflow: hidden;
     }
     .toggle-btn {
       background: none;
       border: none;
-      font-size: 16px;
+      font-size: 17px;
       color: #667085;
       cursor: pointer;
-      margin-right: 12px;
-      padding: 4px;
-      border-radius: 4px;
+      margin-right: 10px;
+      padding: 6px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .toggle-btn:hover {
       background: #f5f7fc;
+      color: #172b4d;
     }
-    .breadcrumb span {
-      padding: 0 9px;
+    .bc-root {
+      color: #98a2b3;
+      white-space: nowrap;
+    }
+    .bc-sep {
+      padding: 0 7px;
       color: #c4cbd5;
+      flex-shrink: 0;
     }
-    .breadcrumb b {
+    .bc-title {
       color: #344054;
       font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
     }
 
     .top-actions {
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 16px;
+      flex-shrink: 0;
     }
 
     .live-indicator {
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
       font-size: 10px;
       color: #667085;
+      font-weight: 600;
     }
     .live-indicator i {
       width: 7px;
@@ -148,10 +170,16 @@ import { NotificationService } from '../core/services/notification.service';
       border: 0;
       background: none;
       color: #667085;
-      font-size: 20px;
+      font-size: 19px;
       position: relative;
       cursor: pointer;
-      padding: 4px;
+      padding: 6px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+    }
+    .icon-button:hover {
+      background: #f5f7fc;
     }
     .icon-button em {
       position: absolute;
@@ -159,8 +187,8 @@ import { NotificationService } from '../core/services/notification.service';
       height: 6px;
       border-radius: 50%;
       background: #ed8c47;
-      right: 2px;
-      top: 2px;
+      right: 4px;
+      top: 4px;
     }
 
     .top-avatar {
@@ -174,6 +202,8 @@ import { NotificationService } from '../core/services/notification.service';
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
     }
 
     .dropdown-menu {
@@ -183,16 +213,18 @@ import { NotificationService } from '../core/services/notification.service';
       background: #fff;
       border: 1px solid #e9edf3;
       border-radius: 9px;
-      box-shadow: 0 10px 30px rgba(23, 43, 77, 0.12);
+      box-shadow: 0 10px 30px rgba(23, 43, 77, 0.15);
       z-index: 100;
       overflow: hidden;
+      box-sizing: border-box;
     }
 
     .notif-menu {
-      width: 320px;
+      width: min(320px, calc(100vw - 24px));
+      max-width: calc(100vw - 24px);
     }
     .menu-head {
-      padding: 12px 16px;
+      padding: 12px 14px;
       background: #fafbfd;
       border-bottom: 1px solid #edf0f5;
       display: flex;
@@ -208,13 +240,14 @@ import { NotificationService } from '../core/services/notification.service';
       color: #315fcb;
       font-size: 10px;
       cursor: pointer;
+      padding: 0;
     }
     .notif-list {
-      max-height: 320px;
+      max-height: 300px;
       overflow-y: auto;
     }
     .notif-row {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid #f1f3f6;
       display: flex;
       gap: 10px;
@@ -237,17 +270,25 @@ import { NotificationService } from '../core/services/notification.service';
     .notif-dot.warning { background: #e28a43; }
     .notif-dot.info { background: #315fcb; }
     .notif-dot.success { background: #168a5c; }
-    .notif-row b {
+    .notif-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .notif-body b {
       display: block;
       font-size: 11px;
       color: #172b4d;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .notif-row p {
+    .notif-body p {
       font-size: 10px;
       color: #667085;
-      margin: 2px 0 4px;
+      margin: 2px 0 3px;
+      overflow-wrap: break-word;
     }
-    .notif-row small {
+    .notif-body small {
       font-size: 9px;
       color: #a1aab8;
     }
@@ -259,23 +300,30 @@ import { NotificationService } from '../core/services/notification.service';
     }
 
     .profile-menu {
-      width: 220px;
+      width: min(220px, calc(100vw - 24px));
+      max-width: calc(100vw - 24px);
       padding: 8px 0;
     }
     .profile-summary {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid #edf0f5;
     }
     .profile-summary b {
       display: block;
       font-size: 12px;
       color: #172b4d;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .profile-summary small {
       display: block;
       font-size: 10px;
       color: #98a2b3;
       margin: 2px 0 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .badge-role {
       display: inline-block;
@@ -285,11 +333,12 @@ import { NotificationService } from '../core/services/notification.service';
       font-weight: 700;
       padding: 2px 7px;
       border-radius: 4px;
+      white-space: nowrap;
     }
     .menu-link {
       width: 100%;
       text-align: left;
-      padding: 9px 16px;
+      padding: 8px 14px;
       background: none;
       border: none;
       font-size: 11px;
@@ -309,12 +358,33 @@ import { NotificationService } from '../core/services/notification.service';
       margin: 4px 0;
     }
 
-    @media (max-width: 760px) {
+    @media (max-width: 860px) {
       .topbar {
         padding: 0 16px;
+        height: 58px;
+      }
+      .bc-title {
+        max-width: 150px;
       }
       .live-indicator {
         display: none;
+      }
+    }
+
+    @media (max-width: 425px) {
+      .topbar {
+        padding: 0 10px;
+        gap: 6px;
+      }
+      .bc-root, .bc-sep {
+        display: none;
+      }
+      .bc-title {
+        max-width: 120px;
+        font-size: 12px;
+      }
+      .top-actions {
+        gap: 8px;
       }
     }
   `]
@@ -352,15 +422,15 @@ export class TopbarComponent {
 
   private updateTitle(url: string): void {
     if (url.includes('/dashboard')) this.pageTitle.set('Overview');
-    else if (url.includes('/transactions/')) this.pageTitle.set('Transaction Details');
+    else if (url.includes('/transactions/')) this.pageTitle.set('Txn Details');
     else if (url.includes('/transactions')) this.pageTitle.set('Transactions');
     else if (url.includes('/fraud-monitoring')) this.pageTitle.set('Fraud Monitoring');
     else if (url.includes('/fraud-alerts')) this.pageTitle.set('Fraud Alerts');
-    else if (url.includes('/customers/')) this.pageTitle.set('Customer Profile');
+    else if (url.includes('/customers/')) this.pageTitle.set('Customer Dossier');
     else if (url.includes('/customers')) this.pageTitle.set('Customers');
-    else if (url.includes('/accounts/')) this.pageTitle.set('Account Details');
+    else if (url.includes('/accounts/')) this.pageTitle.set('Account Ledger');
     else if (url.includes('/accounts')) this.pageTitle.set('Bank Accounts');
-    else if (url.includes('/reports')) this.pageTitle.set('Reports & Analytics');
+    else if (url.includes('/reports')) this.pageTitle.set('Reports');
     else if (url.includes('/user-management')) this.pageTitle.set('User Management');
     else if (url.includes('/audit-logs')) this.pageTitle.set('Audit Logs');
     else if (url.includes('/settings')) this.pageTitle.set('Settings');

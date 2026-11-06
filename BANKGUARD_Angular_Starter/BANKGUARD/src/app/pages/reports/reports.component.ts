@@ -131,13 +131,16 @@ type ReportType = 'daily' | 'monthly' | 'fraud' | 'failed' | 'customer' | 'inves
     .report-actions {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .report-tabs {
       display: flex;
       gap: 8px;
       overflow-x: auto;
-      padding-bottom: 2px;
+      max-width: 100%;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
     }
     .tab-btn {
       background: #fff;
@@ -149,6 +152,7 @@ type ReportType = 'daily' | 'monthly' | 'fraud' | 'failed' | 'customer' | 'inves
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.15s;
+      flex-shrink: 0;
     }
     .tab-btn:hover {
       background: #f7f9fd;
@@ -163,14 +167,16 @@ type ReportType = 'daily' | 'monthly' | 'fraud' | 'failed' | 'customer' | 'inves
 
     .summary-cards {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
+      width: 100%;
     }
     .card {
       background: #fff;
       border: 1px solid #e9edf3;
       border-radius: 9px;
       padding: 14px 18px;
+      min-width: 0;
     }
     .card small {
       display: block;
@@ -184,12 +190,14 @@ type ReportType = 'daily' | 'monthly' | 'fraud' | 'failed' | 'customer' | 'inves
       font: 800 20px 'Manrope', sans-serif;
       color: #172b4d;
       margin-top: 4px;
+      word-break: break-word;
     }
     .blue-text { color: #315fcb !important; }
     .red-text { color: #df5a55 !important; }
 
     .chart-panel {
       padding: 18px 20px;
+      min-width: 0;
     }
     .report-tag {
       background: #f1f3f6;
@@ -203,6 +211,7 @@ type ReportType = 'daily' | 'monthly' | 'fraud' | 'failed' | 'customer' | 'inves
       position: relative;
       height: 230px;
       width: 100%;
+      max-width: 100%;
       margin-top: 10px;
     }
 
@@ -215,7 +224,19 @@ type ReportType = 'daily' | 'monthly' | 'fraud' | 'failed' | 'customer' | 'inves
 
     @media (max-width: 900px) {
       .summary-cards {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .summary-cards {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .report-actions {
+        width: 100%;
+      }
+      .report-actions button {
+        flex: 1 1 auto;
       }
     }
   `]

@@ -117,6 +117,7 @@ import { AuditLog } from '../../core/models';
       white-space: normal;
       color: #344054;
       font-size: 11px;
+      word-break: break-word;
     }
     .ip-code {
       font-size: 10px;
@@ -130,6 +131,12 @@ import { AuditLog } from '../../core/models';
       text-align: center;
       color: #98a2b3;
       font-size: 11px;
+    }
+
+    @media (max-width: 600px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })

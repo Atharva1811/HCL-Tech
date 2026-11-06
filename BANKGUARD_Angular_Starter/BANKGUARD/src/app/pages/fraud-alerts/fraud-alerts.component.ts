@@ -293,6 +293,8 @@ import { FraudAlert, AlertCategory, AlertStatus } from '../../core/models';
       margin-top: 16px;
       padding-top: 12px;
       border-top: 1px solid #f1f3f6;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .page-meta {
       font-size: 11px;
@@ -302,6 +304,7 @@ import { FraudAlert, AlertCategory, AlertStatus } from '../../core/models';
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-wrap: wrap;
     }
     .page-current {
       font-size: 11px;
@@ -318,10 +321,20 @@ import { FraudAlert, AlertCategory, AlertStatus } from '../../core/models';
 
     @media (max-width: 900px) {
       .category-strip {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .filter-row {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .category-strip {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .pagination-footer {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   `]

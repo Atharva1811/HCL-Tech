@@ -549,6 +549,7 @@ import { FraudAlert, AlertStatus, RiskLevel } from '../../core/models';
       justify-content: flex-end;
       padding-top: 10px;
       border-top: 1px solid #f0f2f5;
+      flex-wrap: wrap;
     }
 
     .empty-detail {
@@ -577,7 +578,35 @@ import { FraudAlert, AlertStatus, RiskLevel } from '../../core/models';
         grid-template-columns: 1fr;
       }
       .metric-grid.compact {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .metric-grid.compact {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .detail-panel {
+        padding: 14px;
+      }
+      .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+      .detail-grid dt {
+        margin-top: 6px;
+      }
+      .detail-actions {
+        flex-direction: column;
+      }
+      .detail-actions button {
+        width: 100%;
+      }
+      .add-note-box {
+        flex-direction: column;
+      }
+      .add-note-box button {
+        width: 100%;
       }
     }
   `]

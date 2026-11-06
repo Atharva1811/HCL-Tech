@@ -16,19 +16,22 @@ interface NavItem {
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
-    <aside class="sidebar" [class.collapsed]="collapsed()">
+    <aside class="sidebar" 
+           [class.collapsed]="collapsed() && !mobileOpen()" 
+           [class.mobile-open]="mobileOpen()">
       <div class="brand">
         <div class="brand-mark">B</div>
-        @if (!collapsed()) {
-          <div>
+        @if (!collapsed() || mobileOpen()) {
+          <div class="brand-text">
             <strong>BANKGUARD</strong>
             <small>Banking intelligence</small>
           </div>
+          <button class="mobile-close-btn" (click)="closeMobile.emit()" title="Close navigation">✕</button>
         }
       </div>
 
       <div class="workspace-label">
-        @if (!collapsed()) { WORKSPACE }
+        @if (!collapsed() || mobileOpen()) { WORKSPACE }
       </div>
 
       <nav>
@@ -36,9 +39,10 @@ interface NavItem {
           <a [routerLink]="item.route" 
              routerLinkActive="active" 
              class="nav-item"
+             (click)="closeMobile.emit()"
              [title]="item.label">
             <span class="nav-icon">{{ item.iconSymbol }}</span>
-            @if (!collapsed()) {
+            @if (!collapsed() || mobileOpen()) {
               <span class="nav-text">{{ item.label }}</span>
               @if (item.badge && item.badge() > 0) {
                 <span class="nav-count">{{ item.badge!() }}</span>
@@ -49,10 +53,10 @@ interface NavItem {
       </nav>
 
       <div class="sidebar-bottom">
-        @if (!collapsed()) {
+        @if (!collapsed() || mobileOpen()) {
           <div class="secure-card">
             <div class="secure-icon">✓</div>
-            <div>
+            <div class="secure-text">
               <b>System protected</b>
               <small>All services operational</small>
             </div>
@@ -62,7 +66,7 @@ interface NavItem {
 
         <div class="profile">
           <div class="avatar">{{ userInitials }}</div>
-          @if (!collapsed()) {
+          @if (!collapsed() || mobileOpen()) {
             <div class="profile-copy">
               <b>{{ currentUser()?.fullName || 'Admin Desk' }}</b>
               <small>{{ currentUser()?.role || 'Super Administrator' }}</small>
@@ -81,20 +85,23 @@ interface NavItem {
       inset: 0 auto 0 0;
       display: flex;
       flex-direction: column;
-      padding: 27px 16px 18px;
+      padding: 24px 14px 18px;
       z-index: 100;
-      transition: width 0.2s ease;
+      transition: width 0.2s ease, transform 0.25s ease;
+      box-sizing: border-box;
+      max-width: 100vw;
     }
     .sidebar.collapsed {
       width: 68px;
-      padding: 27px 8px 18px;
+      padding: 24px 8px 18px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 0 10px 32px;
+      gap: 10px;
+      padding: 0 8px 24px;
+      position: relative;
     }
     .brand-mark {
       width: 38px;
@@ -108,17 +115,33 @@ interface NavItem {
       box-shadow: 0 5px 12px rgba(49, 95, 203, 0.25);
       flex-shrink: 0;
     }
+    .brand-text {
+      flex: 1;
+      overflow: hidden;
+    }
     .brand strong {
       display: block;
       font: 800 14px 'Manrope', sans-serif;
       letter-spacing: 1.1px;
       color: #172b4d;
+      white-space: nowrap;
     }
     .brand small {
       display: block;
       color: #98a2b3;
       font-size: 10px;
       margin-top: 2px;
+      white-space: nowrap;
+    }
+    .mobile-close-btn {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 16px;
+      color: #98a2b3;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
     }
 
     .workspace-label {
@@ -126,32 +149,36 @@ interface NavItem {
       letter-spacing: 1.15px;
       font-weight: 700;
       color: #98a2b3;
-      padding: 0 12px 10px;
-      min-height: 22px;
+      padding: 0 10px 8px;
+      min-height: 20px;
+      text-transform: uppercase;
     }
 
     nav {
       display: grid;
-      gap: 4px;
+      gap: 3px;
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
+      margin-bottom: 12px;
     }
 
     .nav-item {
-      height: 40px;
+      height: 38px;
       border: 0;
       background: transparent;
       border-radius: 8px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 0 12px;
+      gap: 10px;
+      padding: 0 10px;
       text-align: left;
       color: #687589;
       font: 600 12px 'DM Sans', sans-serif;
       cursor: pointer;
       text-decoration: none;
       transition: all 0.15s;
+      white-space: nowrap;
     }
     .nav-item:hover {
       background: #f5f7fc;
@@ -182,44 +209,56 @@ interface NavItem {
       padding: 2px 7px;
       font-size: 10px;
       font-weight: 700;
+      flex-shrink: 0;
     }
 
     .sidebar-bottom {
       margin-top: auto;
+      flex-shrink: 0;
     }
 
     .secure-card {
       background: #f7f9fc;
       border: 1px solid #edf0f5;
       border-radius: 9px;
-      padding: 11px 12px;
+      padding: 10px 11px;
       display: flex;
       align-items: center;
       gap: 9px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .secure-icon {
-      width: 26px;
-      height: 26px;
-      border-radius: 7px;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
       background: #e5f7ee;
       color: #15945c;
       display: grid;
       place-items: center;
       font-weight: 800;
-      font-size: 12px;
+      font-size: 11px;
       flex-shrink: 0;
+    }
+    .secure-text {
+      flex: 1;
+      overflow: hidden;
     }
     .secure-card b {
       display: block;
       font-size: 10px;
       color: #172b4d;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .secure-card small {
       display: block;
       font-size: 9px;
       color: #98a2b3;
       margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .online-dot {
       width: 7px;
@@ -228,11 +267,12 @@ interface NavItem {
       border-radius: 50%;
       display: inline-block;
       margin-left: auto;
+      flex-shrink: 0;
     }
 
     .profile {
       border-top: 1px solid #edf0f5;
-      padding: 14px 4px 0;
+      padding: 12px 2px 0;
       display: flex;
       align-items: center;
       gap: 9px;
@@ -266,12 +306,33 @@ interface NavItem {
       font-size: 9px;
       color: #98a2b3;
       margin-top: 2px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    /* Off-canvas behavior on <= 860px */
+    @media (max-width: 860px) {
+      .sidebar {
+        width: 260px !important;
+        transform: translateX(-100%);
+        box-shadow: none;
+      }
+      .sidebar.mobile-open {
+        transform: translateX(0) !important;
+        box-shadow: 4px 0 28px rgba(23, 43, 77, 0.22);
+      }
+      .mobile-close-btn {
+        display: block;
+      }
     }
   `]
 })
 export class SidebarComponent {
   collapsed = input<boolean>(false);
+  mobileOpen = input<boolean>(false);
   toggle = output<void>();
+  closeMobile = output<void>();
 
   private alertService = inject(AlertService);
   private authService = inject(AuthService);
