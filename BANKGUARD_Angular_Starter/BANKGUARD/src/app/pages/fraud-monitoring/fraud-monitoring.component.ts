@@ -135,12 +135,16 @@ import { FraudAlert, AlertStatus, RiskLevel } from '../../core/models';
               <dd>{{ a.detectedAt | date:'dd MMM yyyy, hh:mm:ss a' }}</dd>
               <dt>Assigned Analyst</dt>
               <dd>
-                <select [ngModel]="a.assignedTo" (ngModelChange)="assignInvestigator(a.id, $event)" class="assign-select">
-                  <option value="">-- Unassigned --</option>
-                  @for (user of mockData.users; track user.id) {
-                    <option [value]="user.fullName">{{ user.fullName }} ({{ user.role }})</option>
-                  }
-                </select>
+                @if (canAssignAlerts()) {
+                  <select [ngModel]="a.assignedTo" (ngModelChange)="assignInvestigator(a.id, $event)" class="assign-select">
+                    <option value="">-- Unassigned --</option>
+                    @for (user of mockData.users; track user.id) {
+                      <option [value]="user.fullName">{{ user.fullName }} ({{ user.role }})</option>
+                    }
+                  </select>
+                } @else {
+                  <span>{{ a.assignedTo || 'Unassigned' }}</span>
+                }
               </dd>
               @if (a.dismissalJustification) {
                 <dt>Dismissal Reason</dt>
@@ -166,21 +170,29 @@ import { FraudAlert, AlertStatus, RiskLevel } from '../../core/models';
               </div>
 
               <!-- Add Note Form -->
-              <div class="add-note-box">
-                <input 
-                  type="text" 
-                  [(ngModel)]="newNoteContent" 
-                  placeholder="Add analyst observation or finding..." 
-                  (keyup.enter)="addNote(a.id)">
-                <button class="primary-button" (click)="addNote(a.id)" [disabled]="!newNoteContent.trim()">Add Note</button>
-              </div>
+              @if (canAddNotes()) {
+                <div class="add-note-box">
+                  <input 
+                    type="text" 
+                    [(ngModel)]="newNoteContent" 
+                    placeholder="Add analyst observation or finding..." 
+                    (keyup.enter)="addNote(a.id)">
+                  <button class="primary-button" (click)="addNote(a.id)" [disabled]="!newNoteContent.trim()">Add Note</button>
+                </div>
+              }
             </div>
 
             <!-- Action Buttons -->
             <div class="detail-actions">
-              <button class="secondary-button" (click)="markInvestigating(a)">Mark Investigating</button>
-              <button class="secondary-button" (click)="openDismissDialog(a)">Dismiss False Positive</button>
-              <button class="primary-button" (click)="resolveAlert(a)">Resolve Alert</button>
+              @if (canInvestigate()) {
+                <button class="secondary-button" (click)="markInvestigating(a)">Mark Investigating</button>
+              }
+              @if (canDismiss()) {
+                <button class="secondary-button" (click)="openDismissDialog(a)">Dismiss False Positive</button>
+              }
+              @if (canResolve()) {
+                <button class="primary-button" (click)="resolveAlert(a)">Resolve Alert</button>
+              }
             </div>
           } @else {
             <div class="empty-detail">
@@ -617,6 +629,13 @@ export class FraudMonitoringComponent {
   auditService = inject(AuditLogService);
   mockData = inject(MockDataService);
   private router = inject(Router);
+
+  // RBAC permissions
+  canInvestigate = computed(() => this.authService.hasPermission('fraud.investigate'));
+  canAssignAlerts = computed(() => this.authService.hasPermission('fraud.assign'));
+  canAddNotes = computed(() => this.authService.hasPermission('fraud.add_notes'));
+  canResolve = computed(() => this.authService.hasPermission('fraud.resolve'));
+  canDismiss = computed(() => this.authService.hasPermission('fraud.dismiss'));
 
   statusFilter = signal<string>('All');
   selectedAlert = signal<FraudAlert | null>(null);

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +24,9 @@ import { BankAccount, BankTransaction, AccountStatus } from '../../core/models';
           </div>
           <div class="action-buttons">
             <span class="status" [class]="acc.status.toLowerCase().replace(' ', '-')">{{ acc.status }}</span>
-            <button class="secondary-button" (click)="showStatusModal.set(true)">Manage Operational Status</button>
+            @if (canManageAccount()) {
+              <button class="secondary-button" (click)="showStatusModal.set(true)">Manage Operational Status</button>
+            }
           </div>
         </div>
 
@@ -245,6 +247,8 @@ export class AccountDetailComponent implements OnInit {
   linkedTransactions = signal<BankTransaction[]>([]);
   showStatusModal = signal(false);
   newStatusChoice: AccountStatus = 'Active';
+
+  canManageAccount = computed(() => this.authService.hasPermission('accounts.manage_status'));
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {

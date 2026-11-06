@@ -1,11 +1,12 @@
 /**
  * BANKGUARD — Enterprise Express REST API Server
  * Complete backend service powering banking operations, customer records,
- * transaction ledgers, audit logs and explainable fraud detection.
+ * transaction ledgers, audit logs, explainable fraud detection, and Role-Based Access Control (RBAC).
  */
 
 const express = require('express');
 const cors = require('cors');
+const { ROLE_PERMISSIONS, hasPermission } = require('./permissions');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -79,6 +80,94 @@ const db = {
   ]
 };
 
+// ── RBAC HELPER FUNCTIONS & MIDDLEWARE ─────────────────────────
+
+function countActiveSuperAdmins() {
+  return db.users.filter(u => u.role === 'Super Admin' && u.isActive).length;
+}
+
+/**
+ * Authentication Middleware:
+ * Inspects Authorization: Bearer <token>
+ * Attaches authenticated user to req.user
+ */
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required. Missing Authorization header.' });
+  }
+
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    return res.status(401).json({ error: 'Unauthorized: Invalid Authorization header format. Expected "Bearer <token>".' });
+  }
+
+  const token = parts[1];
+
+  // Match token against active users in DB
+  const user = db.users.find(u => {
+    return (
+      token.startsWith(`bearer-token-${u.username}`) ||
+      token === u.username ||
+      token === `token-${u.username}` ||
+      token === u.id
+    );
+  });
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or unknown authentication token.' });
+  }
+
+  if (!user.isActive) {
+    return res.status(401).json({ error: 'Unauthorized: User account has been deactivated.' });
+  }
+
+  req.user = user;
+  next();
+}
+
+/**
+ * Authorization Middleware: Checks if user has a specific granular permission
+ */
+function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+
+    if (!hasPermission(req.user.role, permission)) {
+      return res.status(403).json({
+        error: 'Forbidden: Insufficient privileges to perform this operation.',
+        requiredPermission: permission,
+        userRole: req.user.role
+      });
+    }
+
+    next();
+  };
+}
+
+/**
+ * Role Authorization Middleware: Checks if user has one of the allowed roles
+ */
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: `Forbidden: Role '${req.user.role}' is not authorized for this resource.`,
+        allowedRoles,
+        userRole: req.user.role
+      });
+    }
+
+    next();
+  };
+}
+
 // ── HEALTH & ROOT ──────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({
@@ -96,7 +185,8 @@ app.get('/', (req, res) => {
       customers: 'GET /api/customers',
       accounts: 'GET /api/accounts',
       rules: 'GET /api/rules',
-      auditLogs: 'GET /api/audit-logs'
+      auditLogs: 'GET /api/audit-logs',
+      users: 'GET /api/users'
     }
   });
 });
@@ -121,6 +211,21 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
 
+  // Record login event in audit log
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: user.id,
+    userName: user.fullName,
+    action: 'LOGIN',
+    target: 'Session',
+    targetId: `SES-${Date.now().toString().slice(-4)}`,
+    details: `User ${user.username} (${user.role}) authenticated successfully`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
+  const permissions = ROLE_PERMISSIONS[user.role] || [];
+
   res.json({
     token: `bearer-token-${user.username}-${Date.now()}`,
     user: {
@@ -128,13 +233,14 @@ app.post('/api/auth/login', (req, res) => {
       username: user.username,
       fullName: user.fullName,
       email: user.email,
-      role: user.role
+      role: user.role,
+      permissions
     }
   });
 });
 
 // ── DASHBOARD AGGREGATES ───────────────────────────────────────
-app.get('/api/dashboard/stats', (req, res) => {
+app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
   const totalVolume = db.transactions.reduce((s, t) => s + t.amount, 0);
   const successCount = db.transactions.filter(t => t.status === 'Completed').length;
   const failedCount = db.transactions.filter(t => t.status === 'Failed').length;
@@ -153,7 +259,7 @@ app.get('/api/dashboard/stats', (req, res) => {
 });
 
 // ── TRANSACTIONS ───────────────────────────────────────────────
-app.get('/api/transactions', (req, res) => {
+app.get('/api/transactions', authenticateToken, requirePermission('transactions.view'), (req, res) => {
   let list = [...db.transactions];
   const { status, type, method, risk, search } = req.query;
 
@@ -169,62 +275,87 @@ app.get('/api/transactions', (req, res) => {
   res.json({ count: list.length, data: list });
 });
 
-app.get('/api/transactions/:id', (req, res) => {
+app.get('/api/transactions/:id', authenticateToken, requirePermission('transactions.view'), (req, res) => {
   const txn = db.transactions.find(t => t.id === req.params.id);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
   const linkedAlerts = db.alerts.filter(a => a.transactionId === txn.id);
   res.json({ ...txn, linkedAlerts });
 });
 
-app.patch('/api/transactions/:id/status', (req, res) => {
+app.patch('/api/transactions/:id/status', authenticateToken, requirePermission('transactions.update_status'), (req, res) => {
   const txn = db.transactions.find(t => t.id === req.params.id);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-  const { status, reason, user } = req.body;
+  const { status, reason } = req.body;
   txn.status = status || txn.status;
 
   db.auditLogs.unshift({
     id: `LOG-${5000 + db.auditLogs.length + 1}`,
-    userId: user?.id || 'USR-001',
-    userName: user?.fullName || 'Admin',
+    userId: req.user.id,
+    userName: req.user.fullName,
     action: 'TRANSACTION_STATUS_CHANGE',
     target: 'Transaction',
     targetId: txn.id,
     details: `Updated status to ${status}. Reason: ${reason || 'Administrative action'}`,
     timestamp: new Date().toISOString(),
-    ipAddress: req.ip || '10.0.0.1'
+    ipAddress: req.ip || '127.0.0.1'
   });
 
   res.json({ success: true, transaction: txn });
 });
 
 // ── FRAUD ALERTS ───────────────────────────────────────────────
-app.get('/api/fraud/alerts', (req, res) => {
+app.get('/api/fraud/alerts', authenticateToken, requirePermission('fraud.view'), (req, res) => {
   res.json(db.alerts);
 });
 
-app.get('/api/fraud/alerts/:id', (req, res) => {
+app.get('/api/fraud/alerts/:id', authenticateToken, requirePermission('fraud.view'), (req, res) => {
   const alert = db.alerts.find(a => a.id === req.params.id);
   if (!alert) return res.status(404).json({ error: 'Alert not found' });
   res.json(alert);
 });
 
-app.patch('/api/fraud/alerts/:id/status', (req, res) => {
+app.patch('/api/fraud/alerts/:id/status', authenticateToken, requireRole('Super Admin', 'Fraud Investigator'), (req, res) => {
   const alert = db.alerts.find(a => a.id === req.params.id);
   if (!alert) return res.status(404).json({ error: 'Alert not found' });
-  alert.status = req.body.status || alert.status;
+
+  const nextStatus = req.body.status;
+  if (nextStatus === 'Resolved' && !hasPermission(req.user.role, 'fraud.resolve')) {
+    return res.status(403).json({ error: 'Forbidden: Insufficient privileges to resolve alerts' });
+  }
+  if (nextStatus === 'Dismissed' && !hasPermission(req.user.role, 'fraud.dismiss')) {
+    return res.status(403).json({ error: 'Forbidden: Insufficient privileges to dismiss alerts' });
+  }
+
+  alert.status = nextStatus || alert.status;
+  if (req.body.dismissalJustification) {
+    alert.dismissalJustification = req.body.dismissalJustification;
+  }
   if (alert.status === 'Resolved' || alert.status === 'Dismissed') {
     alert.resolvedAt = new Date().toISOString();
   }
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: 'ALERT_STATUS_CHANGE',
+    target: 'FraudAlert',
+    targetId: alert.id,
+    details: `Alert ${alert.id} status changed to ${alert.status}${req.body.dismissalJustification ? ` (${req.body.dismissalJustification})` : ''}`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
   res.json(alert);
 });
 
-app.post('/api/fraud/alerts/:id/notes', (req, res) => {
+app.post('/api/fraud/alerts/:id/notes', authenticateToken, requirePermission('fraud.add_notes'), (req, res) => {
   const alert = db.alerts.find(a => a.id === req.params.id);
   if (!alert) return res.status(404).json({ error: 'Alert not found' });
-  const { author, content } = req.body;
+  const { content } = req.body;
   const newNote = {
     id: `N-${Date.now().toString().slice(-5)}`,
-    author: author || 'Analyst',
+    author: req.user.fullName || 'Analyst',
     content: content || '',
     action: 'Analyst Note',
     timestamp: new Date().toISOString()
@@ -234,8 +365,42 @@ app.post('/api/fraud/alerts/:id/notes', (req, res) => {
 });
 
 // ── CUSTOMERS & ACCOUNTS ───────────────────────────────────────
-app.get('/api/customers', (req, res) => res.json(db.customers));
-app.get('/api/customers/:id', (req, res) => {
+app.get('/api/customers', authenticateToken, requirePermission('customers.view'), (req, res) => {
+  res.json(db.customers);
+});
+
+app.post('/api/customers', authenticateToken, requirePermission('customers.create'), (req, res) => {
+  const newCustomer = {
+    id: `CUS-${1000 + db.customers.length + 1}`,
+    fullName: req.body.fullName,
+    email: req.body.email,
+    phone: req.body.phone,
+    registrationDate: new Date().toISOString(),
+    status: 'Active',
+    riskClassification: req.body.riskClassification || 'Low',
+    accountIds: [],
+    address: req.body.address || '',
+    panNumber: req.body.panNumber || ''
+  };
+
+  db.customers.push(newCustomer);
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: 'CUSTOMER_CREATE',
+    target: 'Customer',
+    targetId: newCustomer.id,
+    details: `Created customer ${newCustomer.fullName}`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
+  res.status(201).json(newCustomer);
+});
+
+app.get('/api/customers/:id', authenticateToken, requirePermission('customers.view'), (req, res) => {
   const c = db.customers.find(item => item.id === req.params.id);
   if (!c) return res.status(404).json({ error: 'Customer not found' });
   const accounts = db.accounts.filter(a => a.customerId === c.id);
@@ -243,24 +408,184 @@ app.get('/api/customers/:id', (req, res) => {
   res.json({ customer: c, accounts, transactions: txns });
 });
 
-app.get('/api/accounts', (req, res) => res.json(db.accounts));
-app.get('/api/accounts/:id', (req, res) => {
+app.patch('/api/customers/:id', authenticateToken, requirePermission('customers.update'), (req, res) => {
+  const c = db.customers.find(item => item.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'Customer not found' });
+  Object.assign(c, req.body);
+  res.json(c);
+});
+
+app.patch('/api/customers/:id/status', authenticateToken, requirePermission('customers.manage_status'), (req, res) => {
+  const c = db.customers.find(item => item.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'Customer not found' });
+  c.status = req.body.status || c.status;
+  res.json(c);
+});
+
+app.get('/api/accounts', authenticateToken, requirePermission('accounts.view'), (req, res) => {
+  res.json(db.accounts);
+});
+
+app.get('/api/accounts/:id', authenticateToken, requirePermission('accounts.view'), (req, res) => {
   const a = db.accounts.find(item => item.id === req.params.id);
   if (!a) return res.status(404).json({ error: 'Account not found' });
   const txns = db.transactions.filter(t => t.senderAccount === a.accountNumber || t.receiverAccount === a.accountNumber);
   res.json({ account: a, transactions: txns });
 });
 
+app.patch('/api/accounts/:id/status', authenticateToken, requirePermission('accounts.manage_status'), (req, res) => {
+  const a = db.accounts.find(item => item.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Account not found' });
+  a.status = req.body.status || a.status;
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: 'ACCOUNT_STATUS_CHANGE',
+    target: 'BankAccount',
+    targetId: a.id,
+    details: `Updated account ${a.accountNumber} status to ${a.status}`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
+  res.json(a);
+});
+
 // ── RULES & AUDIT ──────────────────────────────────────────────
-app.get('/api/rules', (req, res) => res.json(db.rules));
-app.put('/api/rules/:id', (req, res) => {
+app.get('/api/rules', authenticateToken, (req, res) => {
+  res.json(db.rules);
+});
+
+app.put('/api/rules/:id', authenticateToken, requirePermission('settings.manage'), (req, res) => {
   const rule = db.rules.find(r => r.id === req.params.id);
   if (!rule) return res.status(404).json({ error: 'Rule not found' });
   Object.assign(rule, req.body);
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: 'RULE_UPDATE',
+    target: 'DetectionRule',
+    targetId: rule.id,
+    details: `Updated detection rule ${rule.name}`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
   res.json(rule);
 });
 
-app.get('/api/audit-logs', (req, res) => res.json(db.auditLogs));
+app.get('/api/audit-logs', authenticateToken, requirePermission('audit.view'), (req, res) => {
+  res.json(db.auditLogs);
+});
+
+// ── USER MANAGEMENT (SUPER ADMIN ONLY) ─────────────────────────
+app.get('/api/users', authenticateToken, requirePermission('users.view'), (req, res) => {
+  res.json(db.users);
+});
+
+app.post('/api/users', authenticateToken, requirePermission('users.create'), (req, res) => {
+  const { fullName, username, email, role } = req.body;
+  if (!fullName || !username) {
+    return res.status(400).json({ error: 'Full name and username are required.' });
+  }
+
+  const existing = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  if (existing) {
+    return res.status(409).json({ error: 'Username already registered.' });
+  }
+
+  const newUser = {
+    id: `USR-00${db.users.length + 1}`,
+    fullName,
+    username,
+    email: email || `${username}@bankguard.demo`,
+    role: role || 'Fraud Investigator',
+    isActive: true,
+    lastLogin: new Date().toISOString()
+  };
+
+  db.users.push(newUser);
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: 'USER_CREATE',
+    target: 'AppUser',
+    targetId: newUser.id,
+    details: `Created new user ${newUser.username} with role ${newUser.role}`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
+  res.status(201).json(newUser);
+});
+
+app.patch('/api/users/:id/role', authenticateToken, requirePermission('users.assign_roles'), (req, res) => {
+  const targetUser = db.users.find(u => u.id === req.params.id);
+  if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+  const { role } = req.body;
+  if (!role) return res.status(400).json({ error: 'Role is required' });
+
+  // Last Super Admin Protection
+  if (targetUser.role === 'Super Admin' && role !== 'Super Admin' && targetUser.isActive) {
+    if (countActiveSuperAdmins() <= 1) {
+      return res.status(400).json({ error: 'Safety Protocol: Cannot demote the last remaining active Super Admin.' });
+    }
+  }
+
+  const prevRole = targetUser.role;
+  targetUser.role = role;
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: 'USER_ROLE_CHANGE',
+    target: 'AppUser',
+    targetId: targetUser.id,
+    details: `Changed role of user ${targetUser.username} from '${prevRole}' to '${role}'`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
+  res.json(targetUser);
+});
+
+app.patch('/api/users/:id/status', authenticateToken, requirePermission('users.deactivate'), (req, res) => {
+  const targetUser = db.users.find(u => u.id === req.params.id);
+  if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+  const { isActive } = req.body;
+
+  // Last Super Admin Protection
+  if (targetUser.role === 'Super Admin' && targetUser.isActive && isActive === false) {
+    if (countActiveSuperAdmins() <= 1) {
+      return res.status(400).json({ error: 'Safety Protocol: Cannot deactivate the last remaining active Super Admin.' });
+    }
+  }
+
+  targetUser.isActive = Boolean(isActive);
+
+  db.auditLogs.unshift({
+    id: `LOG-${5000 + db.auditLogs.length + 1}`,
+    userId: req.user.id,
+    userName: req.user.fullName,
+    action: targetUser.isActive ? 'USER_ACTIVATE' : 'USER_DEACTIVATE',
+    target: 'AppUser',
+    targetId: targetUser.id,
+    details: `${targetUser.isActive ? 'Activated' : 'Deactivated'} staff user ${targetUser.username}`,
+    timestamp: new Date().toISOString(),
+    ipAddress: req.ip || '127.0.0.1'
+  });
+
+  res.json(targetUser);
+});
 
 // ── FRAUD EVALUATION ENGINE ────────────────────────────────────
 app.post('/api/fraud/evaluate', (req, res) => {

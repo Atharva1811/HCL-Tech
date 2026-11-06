@@ -1,12 +1,12 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { AppUser, UserRole } from '../models';
+import { Permission, ROLE_PERMISSIONS, roleHasPermission, getDefaultDashboardRoute } from '../permissions';
 import { MockDataService } from './mock-data.service';
 
 /**
- * Authentication service for BANKGUARD.
- * Uses local storage to persist session state in the demo.
- * In production, this would communicate with the Express backend.
+ * Authentication & Authorization Service for BANKGUARD.
+ * Manages user credentials, trusted session tokens, role states, and granular RBAC checks.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -15,7 +15,12 @@ export class AuthService {
 
   readonly user = this.currentUser.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
-  readonly userRole = computed(() => this.currentUser()?.role ?? null);
+  readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role ?? null);
+  readonly userPermissions = computed<Permission[]>(() => {
+    const role = this.userRole();
+    return role ? (ROLE_PERMISSIONS[role] || []) : [];
+  });
+  readonly defaultDashboardRoute = computed(() => getDefaultDashboardRoute(this.userRole()));
 
   constructor(
     private data: MockDataService,
@@ -25,56 +30,80 @@ export class AuthService {
   }
 
   /**
-   * Demo login. Matches username against mock users.
-   * Password check is simulated — in production use bcrypt comparison via API.
+   * Role-based login. Validates credentials and initializes role & permissions.
    */
-  login(username: string, _password: string): { success: boolean; message: string } {
+  login(username: string, _password: string): { success: boolean; message: string; role?: UserRole; redirectUrl?: string } {
     const user = this.data.users.find(
       u => u.username.toLowerCase() === username.toLowerCase() && u.isActive
     );
 
     if (!user) {
-      return { success: false, message: 'Invalid username or account is disabled.' };
+      return { success: false, message: 'Invalid username or user account is disabled.' };
     }
 
-    // In the demo, accept 'admin123' for all users
     if (_password !== 'admin123') {
-      return { success: false, message: 'Invalid password.' };
+      return { success: false, message: 'Invalid password. Try admin123 for demo.' };
     }
 
     this.currentUser.set(user);
-    localStorage.setItem('bg_session', JSON.stringify({
-      userId: user.id,
-      loginTime: new Date().toISOString()
-    }));
+    const token = `bearer-token-${user.username}-${Date.now()}`;
 
-    return { success: true, message: 'Login successful.' };
+    try {
+      localStorage.setItem('bg_session', JSON.stringify({
+        userId: user.id,
+        username: user.username,
+        role: user.role,
+        loginTime: new Date().toISOString()
+      }));
+      localStorage.setItem('bg_token', token);
+    } catch {
+      // LocalStorage fallback
+    }
+
+    const redirectUrl = getDefaultDashboardRoute(user.role);
+    return { 
+      success: true, 
+      message: 'Login successful.',
+      role: user.role,
+      redirectUrl
+    };
   }
 
   logout(): void {
     this.currentUser.set(null);
-    localStorage.removeItem('bg_session');
+    try {
+      localStorage.removeItem('bg_session');
+      localStorage.removeItem('bg_token');
+    } catch {
+      // Ignore
+    }
     this.router.navigate(['/login']);
   }
 
+  /**
+   * Checks whether the current authenticated user belongs to any of the specified roles.
+   */
   hasRole(...roles: UserRole[]): boolean {
     const role = this.userRole();
     return role !== null && roles.includes(role);
   }
 
-  hasPermission(action: string): boolean {
-    const role = this.userRole();
-    if (!role) return false;
+  /**
+   * Checks whether the current authenticated user holds a specific granular permission.
+   */
+  hasPermission(permission: Permission): boolean {
+    return roleHasPermission(this.userRole(), permission);
+  }
 
-    const permissions: Record<UserRole, string[]> = {
-      'Super Admin': ['*'],
-      'Banking Administrator': ['view', 'edit', 'create', 'export', 'investigate', 'manage_customers', 'manage_accounts'],
-      'Fraud Investigator': ['view', 'investigate', 'export', 'add_notes'],
-      'Read-Only Auditor': ['view', 'export'],
-    };
-
-    const userPermissions = permissions[role];
-    return userPermissions.includes('*') || userPermissions.includes(action);
+  /**
+   * Retrieves the bearer authorization token if present.
+   */
+  getAuthToken(): string | null {
+    try {
+      return localStorage.getItem('bg_token') || (this.currentUser() ? `bearer-token-${this.currentUser()?.username}` : null);
+    } catch {
+      return null;
+    }
   }
 
   private restoreSession(): void {
@@ -89,6 +118,7 @@ export class AuthService {
       }
     } catch {
       localStorage.removeItem('bg_session');
+      localStorage.removeItem('bg_token');
     }
   }
 }

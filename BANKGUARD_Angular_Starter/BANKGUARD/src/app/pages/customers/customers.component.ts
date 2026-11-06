@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CustomerService } from '../../core/services/customer.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Customer, CustomerStatus, RiskLevel } from '../../core/models';
 
 @Component({
@@ -17,7 +18,9 @@ import { Customer, CustomerStatus, RiskLevel } from '../../core/models';
           <h1>Customer Management</h1>
           <p>Maintain retail & corporate banking customer profiles, risk classifications and KYC statuses.</p>
         </div>
-        <button class="primary-button" (click)="openAddModal()">+ Add New Customer</button>
+        @if (canCreateCustomer()) {
+          <button class="primary-button" (click)="openAddModal()">+ Add New Customer</button>
+        }
       </div>
 
       <!-- Customer Summary Row -->
@@ -240,7 +243,10 @@ import { Customer, CustomerStatus, RiskLevel } from '../../core/models';
 })
 export class CustomersComponent {
   private customerService = inject(CustomerService);
+  private authService = inject(AuthService);
   private router = inject(Router);
+
+  canCreateCustomer = computed(() => this.authService.hasPermission('customers.create'));
 
   searchTerm = signal('');
   statusFilter = signal('All');

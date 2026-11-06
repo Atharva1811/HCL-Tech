@@ -316,24 +316,141 @@ The Express backend (`BANKGUARD_Angular_Starter/BANKGUARD/server/server.js`) exp
 
 ---
 
-## 13. Authentication & Authorization (RBAC)
+## 13. Authentication & Role-Based Access Control (RBAC)
 
-BANKGUARD implements multi-tier Role-Based Access Control managed through `AuthService`, `authGuard`, and `roleGuard`:
+BANKGUARD implements an end-to-end, multi-tier Role-Based Access Control architecture enforced at both the Angular 21 frontend and Express 4 backend layers. The application guarantees that users with distinct responsibilities receive personalized dashboard workspaces and can only execute actions permitted by their security clearance.
 
-### Supported Institutional Roles
+### 13.1 Supported Institutional Roles & Default Landings
 
-1. **Super Admin** (`admin` / `atharva.d`):
-   - Full read/write authority across all modules.
-   - Authorized to calibrate fraud rules and override risk thresholds.
-2. **Banking Administrator** (`pratik.b` / `pratik.h`):
-   - Oversees customer KYC dossiers and bank account operations.
-   - Authorized to freeze, restrict, or suspend bank accounts.
-3. **Fraud Investigator** (`tanvesh.y` / `vikas.k`):
-   - Dedicated console access to the Fraud Monitoring Workspace.
-   - Authorized to assign alerts, record forensic notes, dismiss false positives, and resolve incidents.
-4. **Read-Only Auditor** (`auditor`):
-   - Inspection privileges over transactions, accounts, reports, and audit logs.
-   - Administrative action buttons and state-changing modals are disabled.
+| Role | Default Dashboard | Key Functional Domain | Example Credentials |
+|:---|:---|:---|:---|
+| **Super Admin** | `/dashboard/admin` | Full system governance, staff management, rule thresholds, audit trail | `admin` / `admin123` |
+| **Banking Administrator** | `/dashboard/banking` | Daily banking operations, KYC onboarding, account restriction, settlements | `pratik.b` / `admin123` |
+| **Fraud Investigator** | `/dashboard/fraud` | Suspicious transaction queues, risk scoring, alert resolution, forensic notes | `tanvesh.y` / `admin123` |
+| **Read-Only Auditor** | `/dashboard/audit` | Independent compliance inspection, financial verification, immutable audit logs | `auditor` / `admin123` |
+
+---
+
+### 13.2 Centralized Granular Permission Matrix
+
+The application defines 22 granular permissions mapped consistently between `src/app/core/permissions.ts` and `server/permissions.js`:
+
+| Permission Key | Description | Super Admin | Banking Admin | Fraud Investigator | Read-Only Auditor |
+|:---|:---|:---:|:---:|:---:|:---:|
+| `users.view` | View internal staff roster | ✅ | ❌ | ❌ | ❌ |
+| `users.create` | Create staff accounts | ✅ | ❌ | ❌ | ❌ |
+| `users.update` | Update staff profile details | ✅ | ❌ | ❌ | ❌ |
+| `users.assign_roles` | Modify staff security roles | ✅ | ❌ | ❌ | ❌ |
+| `users.deactivate` | Activate / deactivate staff accounts | ✅ | ❌ | ❌ | ❌ |
+| `customers.view` | View customer KYC profiles | ✅ | ✅ | ✅ | ✅ |
+| `customers.create` | Register new customer accounts | ✅ | ✅ | ❌ | ❌ |
+| `customers.update` | Edit customer contact & PAN data | ✅ | ✅ | ❌ | ❌ |
+| `customers.manage_status` | Alter customer KYC status (Suspend/Review) | ✅ | ✅ | ❌ | ❌ |
+| `accounts.view` | Inspect bank account balances & branches | ✅ | ✅ | ✅ | ✅ |
+| `accounts.manage_status` | Restrict or freeze bank accounts | ✅ | ✅ | ❌ | ❌ |
+| `transactions.view` | Access transaction ledger & details | ✅ | ✅ | ✅ | ✅ |
+| `transactions.update_status` | Override transaction state (Completed/Blocked) | ✅ | ✅ | ❌ | ❌ |
+| `fraud.view` | View fraud alerts & risk scores | ✅ | ✅ | ✅ | ✅ |
+| `fraud.investigate` | Transition alerts to Investigating | ✅ | ❌ | ✅ | ❌ |
+| `fraud.assign` | Assign alerts to analysts | ✅ | ❌ | ✅ | ❌ |
+| `fraud.add_notes` | Document forensic investigation notes | ✅ | ❌ | ✅ | ❌ |
+| `fraud.resolve` | Mark alerts as confirmed fraud / resolved | ✅ | ❌ | ✅ | ❌ |
+| `fraud.dismiss` | Dismiss alerts as false positives with reason | ✅ | ❌ | ✅ | ❌ |
+| `reports.view` | Access reporting analytics charts | ✅ | ✅ | ✅ | ✅ |
+| `reports.export` | Export CSV reporting dossiers | ✅ | ✅ | ✅ | ✅ |
+| `audit.view` | Inspect regulatory audit log trail | ✅ | ❌ | ❌ | ✅ |
+| `audit.export` | Download audit log CSV files | ✅ | ❌ | ❌ | ✅ |
+| `settings.manage` | Calibrate detection thresholds & weights | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+### 13.3 Role-Specific Dashboard Workspaces
+
+Instead of exposing an identical overview to every user, BANKGUARD dynamically tailors the dashboard based on URL and user role:
+
+1. **Super Admin Workspace (`/dashboard/admin`)**:
+   - **Metrics**: Total System Volume, Total Customers, Mapped Accounts, Staff Accounts, Critical Fraud Alerts, Unresolved Incidents.
+   - **Visualizations**: 7-Day Liquidity Volume Trend, Nature Distribution, Processed vs Failed Bar, Payment Method Share.
+   - **Feed**: Combined live operational transactions and administrative audit event streams.
+
+2. **Banking Operations Workspace (`/dashboard/banking`)**:
+   - **Metrics**: Active Retail Customers, Active Operational Accounts, 24h Transaction Volume, Completed Settlements, Failed Authorizations, Operational Success Rate (%).
+   - **Visualizations**: Daily Liquidity Flow, Channel Volume Distribution (UPI/NEFT/RTGS/IMPS), Transaction Nature Distribution.
+   - **Feed**: Real-time clearing & settlement ledger with quick-status filters.
+
+3. **Fraud Investigation Workspace (`/dashboard/fraud`)**:
+   - **Metrics**: Suspicious Flagged Transactions, Critical Severity Alerts, High Risk Alerts, Open Queue, Under Active Investigation, Resolved False Alarms.
+   - **Visualizations**: Fraud Risk Severity Breakdown (Critical/High/Medium/Low Donut), Flagged vs Normal Ratio, Channel Threat Distribution.
+   - **Feed**: Prioritized fraud alert triage queue with instant drill-down to forensic dossiers.
+
+4. **Compliance & Audit Workspace (`/dashboard/audit`)**:
+   - **Metrics**: Total Audited Financial Volume, Cleared Settlements, Intercepted/Blocked Volume, Active Fraud Flags, Registered Staff Users, Immutable Audit Entries.
+   - **Visualizations**: Transaction Compliance Ratio, Settlement vs Failed Volume comparison, Payment Method Integrity.
+   - **Feed**: Live immutable regulatory audit stream logging user actions, IP addresses, and targets.
+
+---
+
+### 13.4 Frontend Enforcement & Security Guards
+
+1. **Functional Route Guards (`roleGuard`)**:
+   - Attached to all child routes in `src/app/app.routes.ts`.
+   - Checks `route.data['roles']` and `route.data['permissions']`.
+   - Unauthorized attempts automatically redirect to `/unauthorized` (HTTP 403 Forbidden page) displaying the user's current role and a return button to their authorized dashboard.
+2. **Role-Aware Sidebar Navigation**:
+   - Filters menu items via `authService.hasRole()` and `authService.hasPermission()`.
+   - "Overview" dynamically links to the user's specific dashboard (`/dashboard/admin`, `/dashboard/banking`, `/dashboard/fraud`, or `/dashboard/audit`).
+   - Modules for which the user lacks permissions (e.g., User Management for Banking Admin) are completely removed from the navigation DOM.
+3. **Action Button & Mutation Visibility**:
+   - Action controls (such as `+ Add New Customer`, `Edit Customer`, `Manage Operational Status`, status transition dropdowns, and rule save buttons) are wrapped in Angular `@if (canPerformAction())`.
+   - Read-only users (Auditors, Investigators viewing accounts) are shown contextual read-only indicators (e.g., `🔒 Read-Only Configuration`, `🔒 Read-Only Dossier`) with inputs disabled.
+
+---
+
+### 13.5 Backend API Authorization Middleware
+
+The Express server (`server/server.js`) strictly verifies authorization on all endpoints independently of the frontend:
+
+1. **`authenticateToken`**:
+   - Extracts and verifies `Authorization: Bearer <token>`.
+   - Returns `HTTP 401 Unauthorized` for missing, expired, or malformed tokens.
+2. **`requirePermission(permission)`**:
+   - Queries `ROLE_PERMISSIONS` for the authenticated user's role.
+   - Returns `HTTP 403 Forbidden` with detailed error payload if the user lacks the required permission.
+3. **`requireRole(...allowedRoles)`**:
+   - Restricts sensitive administrative mutations to specific roles.
+4. **Safety Protocol — Last Super Admin Protection**:
+   - `server.js` and `user-management.component.ts` enforce checks that prevent deactivating or demoting the last active Super Admin in the system (`HTTP 400 Bad Request`).
+   - Prevents accidental lockout of institutional administrative capabilities.
+
+---
+
+### 13.6 Automated RBAC Verification Suite
+
+BANKGUARD includes a dedicated automated test suite (`tests/rbac.test.js`) executed against the running backend:
+
+```bash
+node tests/rbac.test.js
+```
+
+**Verification Results: 18/18 Passing Tests**:
+- ✔ Test 1: Super Admin has all system permissions
+- ✔ Test 2: Banking Administrator has operational permissions but lacks admin & fraud investigation
+- ✔ Test 3: Fraud Investigator has alert resolution permissions but lacks customer/account mutations
+- ✔ Test 4: Read-Only Auditor is strictly read-only
+- ✔ Test 5: Unauthenticated requests to protected endpoints return HTTP 401
+- ✔ Test 6: Requests with malformed or invalid Bearer tokens return HTTP 401
+- ✔ Test 7: Users authenticate and receive role-specific payload with permissions
+- ✔ Test 8: Super Admin can access User Management endpoint (HTTP 200)
+- ✔ Test 9: Banking Administrator is forbidden from User Management (HTTP 403)
+- ✔ Test 10: Banking Administrator is forbidden from modifying Detection Rules (HTTP 403)
+- ✔ Test 11: Banking Administrator can manage transaction status (HTTP 200)
+- ✔ Test 12: Fraud Investigator can add notes and resolve fraud alerts (HTTP 200)
+- ✔ Test 13: Fraud Investigator is forbidden from modifying Bank Account status (HTTP 403)
+- ✔ Test 14: Read-Only Auditor can view transactions and audit logs (HTTP 200)
+- ✔ Test 15: Read-Only Auditor is forbidden from modifying transaction status (HTTP 403)
+- ✔ Test 16: Read-Only Auditor is forbidden from resolving alerts (HTTP 403)
+- ✔ Test 17: Safety Protocol: Demoting or deactivating the last active Super Admin is rejected (HTTP 400)
+- ✔ Test 18: State mutations create verified, traceable audit logs
 
 ---
 
@@ -531,3 +648,4 @@ This platform was developed as a collaborative college main project by **Group 1
 
 ---
 *© 2026 BANKGUARD · Banking Intelligence Platform (Group 10)*
+

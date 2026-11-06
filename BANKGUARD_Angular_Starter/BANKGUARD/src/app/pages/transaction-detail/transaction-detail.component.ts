@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -28,9 +28,13 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
           </div>
 
           <div class="heading-actions">
-            <button class="secondary-button" (click)="openStatusDialog('Under Review')">Mark Under Review</button>
-            <button class="danger-button" (click)="openStatusDialog('Blocked')">Block Transaction</button>
-            <button class="primary-button" (click)="openStatusDialog('Completed')">Approve / Complete</button>
+            @if (canUpdateTransaction()) {
+              <button class="secondary-button" (click)="openStatusDialog('Under Review')">Mark Under Review</button>
+              <button class="danger-button" (click)="openStatusDialog('Blocked')">Block Transaction</button>
+              <button class="primary-button" (click)="openStatusDialog('Completed')">Approve / Complete</button>
+            } @else {
+              <span class="read-only-badge">🔒 Read-Only Record</span>
+            }
           </div>
         </div>
 
@@ -236,6 +240,16 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
       flex-wrap: wrap;
     }
 
+    .read-only-badge {
+      background: #f1f3f6;
+      color: #687589;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+    }
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -483,7 +497,17 @@ import { BankTransaction, FraudAlert, TransactionStatus } from '../../core/model
     }
 
     @media (max-width: 992px) {
-      .cards-grid {
+      .read-only-badge {
+      background: #f1f3f6;
+      color: #687589;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .cards-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -524,6 +548,8 @@ export class TransactionDetailComponent implements OnInit {
   linkedAlerts = signal<FraudAlert[]>([]);
   confirmDialogState = signal<{ newStatus: TransactionStatus } | null>(null);
   actionReason = 'Reviewed by compliance team';
+
+  canUpdateTransaction = computed(() => this.authService.hasPermission('transactions.update_status'));
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {

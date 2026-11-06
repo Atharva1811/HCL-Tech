@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { CustomerService } from '../../core/services/customer.service';
 import { AccountService } from '../../core/services/account.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { AlertService } from '../../core/services/alert.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Customer, BankAccount, BankTransaction, FraudAlert, CustomerStatus, RiskLevel } from '../../core/models';
 
 @Component({
@@ -26,10 +27,14 @@ import { Customer, BankAccount, BankTransaction, FraudAlert, CustomerStatus, Ris
           </div>
 
           <div class="action-buttons">
-            <button class="secondary-button" (click)="toggleEdit()">
-              {{ isEditing() ? 'Cancel Editing' : 'Edit Customer' }}
-            </button>
-            <button class="danger-button" (click)="openStatusDialog()">Change KYC / Account Status</button>
+            @if (canUpdateCustomer()) {
+              <button class="secondary-button" (click)="toggleEdit()">
+                {{ isEditing() ? 'Cancel Editing' : 'Edit Customer' }}
+              </button>
+            }
+            @if (canManageCustomerStatus()) {
+              <button class="danger-button" (click)="openStatusDialog()">Change KYC / Account Status</button>
+            }
           </div>
         </div>
 
@@ -314,6 +319,10 @@ export class CustomerDetailComponent implements OnInit {
   private customerService = inject(CustomerService);
   private accountService = inject(AccountService);
   private txnService = inject(TransactionService);
+  private authService = inject(AuthService);
+
+  canUpdateCustomer = computed(() => this.authService.hasPermission('customers.update'));
+  canManageCustomerStatus = computed(() => this.authService.hasPermission('customers.manage_status'));
 
   customer = signal<Customer | null>(null);
   accounts = signal<BankAccount[]>([]);

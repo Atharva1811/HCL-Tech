@@ -259,7 +259,7 @@ export class LoginComponent {
       this.loading.set(false);
 
       if (res.success) {
-        this.router.navigate(['/dashboard']);
+        this.router.navigate([res.redirectUrl || '/dashboard']);
       } else {
         this.errorMessage.set(res.message);
       }

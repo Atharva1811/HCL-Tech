@@ -1,14 +1,18 @@
-import { Component, input, output, inject } from '@angular/core';
+import { Component, input, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AlertService } from '../core/services/alert.service';
 import { AuthService } from '../core/services/auth.service';
+import { UserRole } from '../core/models';
+import { Permission } from '../core/permissions';
 
 interface NavItem {
   label: string;
-  route: string;
+  route: string | (() => string);
   iconSymbol: string;
   badge?: () => number;
+  roles?: UserRole[];
+  permission?: Permission;
 }
 
 @Component({
@@ -31,12 +35,14 @@ interface NavItem {
       </div>
 
       <div class="workspace-label">
-        @if (!collapsed() || mobileOpen()) { WORKSPACE }
+        @if (!collapsed() || mobileOpen()) {
+          <span>WORKSPACE · {{ shortRoleName }}</span>
+        }
       </div>
 
       <nav>
-        @for (item of navItems; track item.route) {
-          <a [routerLink]="item.route" 
+        @for (item of visibleNavItems(); track item.label) {
+          <a [routerLink]="resolveRoute(item.route)" 
              routerLinkActive="active" 
              class="nav-item"
              (click)="closeMobile.emit()"
@@ -57,8 +63,8 @@ interface NavItem {
           <div class="secure-card">
             <div class="secure-icon">✓</div>
             <div class="secure-text">
-              <b>System protected</b>
-              <small>All services operational</small>
+              <b>Role Enforcement Active</b>
+              <small>{{ currentUser()?.role || 'Authorized Session' }}</small>
             </div>
             <span class="online-dot"></span>
           </div>
@@ -69,7 +75,7 @@ interface NavItem {
           @if (!collapsed() || mobileOpen()) {
             <div class="profile-copy">
               <b>{{ currentUser()?.fullName || 'Admin Desk' }}</b>
-              <small>{{ currentUser()?.role || 'Super Administrator' }}</small>
+              <small class="role-badge-text">{{ currentUser()?.role || 'Super Administrator' }}</small>
             </div>
           }
         </div>
@@ -145,13 +151,16 @@ interface NavItem {
     }
 
     .workspace-label {
-      font-size: 10px;
-      letter-spacing: 1.15px;
+      font-size: 9px;
+      letter-spacing: 0.9px;
       font-weight: 700;
-      color: #98a2b3;
+      color: #7c8ba0;
       padding: 0 10px 8px;
       min-height: 20px;
       text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     nav {
@@ -301,10 +310,11 @@ interface NavItem {
       text-overflow: ellipsis;
       overflow: hidden;
     }
-    .profile-copy small {
+    .role-badge-text {
       display: block;
       font-size: 9px;
-      color: #98a2b3;
+      color: #315fcb;
+      font-weight: 700;
       margin-top: 2px;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -344,16 +354,105 @@ export class SidebarComponent {
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   }
 
-  navItems: NavItem[] = [
-    { label: 'Overview', route: '/dashboard', iconSymbol: '▦' },
-    { label: 'Transactions', route: '/transactions', iconSymbol: '⇄' },
-    { label: 'Fraud Monitoring', route: '/fraud-monitoring', iconSymbol: '◈' },
-    { label: 'Fraud Alerts', route: '/fraud-alerts', iconSymbol: '⚠', badge: () => this.alertService.criticalActiveCount() + this.alertService.openCount() },
-    { label: 'Customers', route: '/customers', iconSymbol: '♙' },
-    { label: 'Bank Accounts', route: '/accounts', iconSymbol: '🏦' },
-    { label: 'Reports & Analytics', route: '/reports', iconSymbol: '▤' },
-    { label: 'User Management', route: '/user-management', iconSymbol: '👥' },
-    { label: 'Audit Logs', route: '/audit-logs', iconSymbol: '📋' },
-    { label: 'Settings', route: '/settings', iconSymbol: '⚙' },
+  get shortRoleName(): string {
+    const role = this.currentUser()?.role;
+    if (role === 'Super Admin') return 'ADMIN';
+    if (role === 'Banking Administrator') return 'BANKING';
+    if (role === 'Fraud Investigator') return 'INVESTIGATOR';
+    if (role === 'Read-Only Auditor') return 'AUDITOR';
+    return 'USER';
+  }
+
+  // Master definition of navigation items with permission & role constraints
+  private navItems: NavItem[] = [
+    { 
+      label: 'Overview', 
+      route: () => this.authService.defaultDashboardRoute(), 
+      iconSymbol: '▦' 
+    },
+    { 
+      label: 'Transactions', 
+      route: '/transactions', 
+      iconSymbol: '⇄',
+      permission: 'transactions.view'
+    },
+    { 
+      label: 'Fraud Monitoring', 
+      route: '/fraud-monitoring', 
+      iconSymbol: '◈',
+      roles: ['Super Admin', 'Fraud Investigator'],
+      permission: 'fraud.investigate'
+    },
+    { 
+      label: 'Fraud Alerts', 
+      route: '/fraud-alerts', 
+      iconSymbol: '⚠', 
+      badge: () => this.alertService.criticalActiveCount() + this.alertService.openCount(),
+      permission: 'fraud.view'
+    },
+    { 
+      label: 'Customers', 
+      route: '/customers', 
+      iconSymbol: '♙',
+      permission: 'customers.view'
+    },
+    { 
+      label: 'Bank Accounts', 
+      route: '/accounts', 
+      iconSymbol: '🏦',
+      permission: 'accounts.view'
+    },
+    { 
+      label: 'Reports & Analytics', 
+      route: '/reports', 
+      iconSymbol: '▤',
+      permission: 'reports.view'
+    },
+    { 
+      label: 'User Management', 
+      route: '/user-management', 
+      iconSymbol: '👥',
+      roles: ['Super Admin'],
+      permission: 'users.view'
+    },
+    { 
+      label: 'Audit Logs', 
+      route: '/audit-logs', 
+      iconSymbol: '📋',
+      roles: ['Super Admin', 'Read-Only Auditor'],
+      permission: 'audit.view'
+    },
+    { 
+      label: 'Settings', 
+      route: '/settings', 
+      iconSymbol: '⚙',
+      roles: ['Super Admin'],
+      permission: 'settings.manage'
+    },
   ];
+
+  visibleNavItems = computed(() => {
+    // If not authenticated yet, return empty
+    if (!this.authService.isAuthenticated()) return [];
+
+    return this.navItems.filter(item => {
+      // Check role constraint if set
+      if (item.roles && item.roles.length > 0) {
+        if (!this.authService.hasRole(...item.roles)) {
+          return false;
+        }
+      }
+      // Check permission constraint if set
+      if (item.permission) {
+        if (!this.authService.hasPermission(item.permission)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  });
+
+  resolveRoute(route: string | (() => string)): string {
+    return typeof route === 'function' ? route() : route;
+  }
 }

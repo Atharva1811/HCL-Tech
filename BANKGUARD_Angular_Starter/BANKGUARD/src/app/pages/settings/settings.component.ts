@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MockDataService } from '../../core/services/mock-data.service';
@@ -18,7 +18,11 @@ import { DetectionRule } from '../../core/models';
           <h1>Detection Rules & Settings</h1>
           <p>Calibrate explainable fraud detection thresholds, weights, and administrative system preferences.</p>
         </div>
-        <button class="primary-button" (click)="saveAllSettings()">Save Engine Configurations</button>
+        @if (canManageSettings()) {
+          <button class="primary-button" (click)="saveAllSettings()">Save Engine Configurations</button>
+        } @else {
+          <span class="read-only-badge">🔒 Read-Only Configuration</span>
+        }
       </div>
 
       @if (saveSuccessMessage()) {
@@ -61,7 +65,7 @@ import { DetectionRule } from '../../core/models';
                       type="number" 
                       [(ngModel)]="r.threshold" 
                       class="mini-input"
-                      [disabled]="r.id === 'RULE-03'">
+                      [disabled]="!canManageSettings() || r.id === 'RULE-03'">
                     <span class="unit-label">
                       {{ r.id === 'RULE-01' ? '₹' : r.id === 'RULE-05' ? '% dev' : 'events' }}
                     </span>
@@ -74,12 +78,12 @@ import { DetectionRule } from '../../core/models';
                     }
                   </td>
                   <td>
-                    <input type="number" [(ngModel)]="r.scoreWeight" class="mini-input" min="5" max="50">
+                    <input type="number" [(ngModel)]="r.scoreWeight" class="mini-input" min="5" max="50" [disabled]="!canManageSettings()">
                     <span class="unit-label">pts</span>
                   </td>
                   <td>
                     <label class="switch">
-                      <input type="checkbox" [(ngModel)]="r.enabled">
+                      <input type="checkbox" [(ngModel)]="r.enabled" [disabled]="!canManageSettings()">
                       <span class="slider"></span>
                     </label>
                   </td>
@@ -101,21 +105,21 @@ import { DetectionRule } from '../../core/models';
               <b>Critical Risk Threshold</b>
               <small>Transactions scoring at or above this mark are blocked.</small>
             </div>
-            <input type="number" value="80" class="mini-input">
+            <input type="number" value="80" class="mini-input" [disabled]="!canManageSettings()">
           </div>
           <div class="setting-item">
             <div>
               <b>High Risk Threshold</b>
               <small>Flagged for immediate compliance investigation.</small>
             </div>
-            <input type="number" value="60" class="mini-input">
+            <input type="number" value="60" class="mini-input" [disabled]="!canManageSettings()">
           </div>
           <div class="setting-item">
             <div>
               <b>Medium Risk Threshold</b>
               <small>Triggers automated verification challenges.</small>
             </div>
-            <input type="number" value="30" class="mini-input">
+            <input type="number" value="30" class="mini-input" [disabled]="!canManageSettings()">
           </div>
         </article>
 
@@ -289,12 +293,27 @@ import { DetectionRule } from '../../core/models';
         gap: 8px;
       }
     }
+
+    .read-only-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
   `]
 })
 export class SettingsComponent {
   private mockData = inject(MockDataService);
   private auditService = inject(AuditLogService);
   private authService = inject(AuthService);
+
+  canManageSettings = computed(() => this.authService.hasPermission('settings.manage'));
 
   rules = signal<DetectionRule[]>([...this.mockData.detectionRules]);
   saveSuccessMessage = signal('');
